@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability privately
+    url: https://github.com/renegadecrew/php2shell/security/advisories/new
+    about: Do not disclose vulnerabilities or third-party host details in public issues.
+  - name: Read the contribution and support guides
+    url: https://github.com/renegadecrew/php2shell/blob/main/CONTRIBUTING.md
+    about: Check project conventions and troubleshooting guidance before opening an issue.

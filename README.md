@@ -88,6 +88,10 @@ npm test
 
 The test suite covers domain normalization, CT parsing, PHP version classification, HTTP 200/403 handling, CT caching, batch limits, candidate filtering, and rejection of non-public IP addresses. GitHub Actions runs it on Node.js 20, 22, and 24 for pushes and pull requests.
 
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md), the [Code of Conduct](CODE_OF_CONDUCT.md), [Support](SUPPORT.md), and the [Security Policy](SECURITY.md). Dependabot checks npm packages and GitHub Actions weekly.
+
 ## License
 
 This project is licensed under the [MIT License](LICENSE). The adapted banner artwork is derived from DevCop95's MIT-licensed [Shodan ReconsX artwork](https://github.com/DevCop95/shodan_reconsx); see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

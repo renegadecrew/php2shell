@@ -1,0 +1,48 @@
+name: Bug report
+description: Report a reproducible defect in the application.
+title: "fix: "
+labels:
+  - bug
+  - triage
+body:
+  - type: markdown
+    attributes:
+      value: Use reserved example domains and sanitized output. Do not include credentials, private hostnames, or real scan results.
+  - type: input
+    id: summary
+    attributes:
+      label: Summary
+      description: A short, specific description of the defect.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Include the smallest reproducible sequence. Replace real domains with example.com.
+      placeholder: "1. Start the app …\n2. Enter example.com …\n3. Observe …"
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected and actual behavior
+      description: State what you expected and what happened instead.
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: App commit/version, Node.js version, OS, and browser.
+      placeholder: "main, Node.js 22, Windows 11, Chrome"
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Sanitized logs or screenshots
+      description: Remove tokens, private hostnames, IP addresses, and unrelated scan data.
+      render: text
+    validations:
+      required: false

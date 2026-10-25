@@ -1,0 +1,39 @@
+name: Feature request
+description: Propose a bounded improvement to defensive asset triage.
+title: "feat: "
+labels:
+  - enhancement
+  - triage
+body:
+  - type: markdown
+    attributes:
+      value: Requests should preserve the project's local-first design, bounded checks, and non-intrusive behavior.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or workflow
+      description: What defensive task is difficult today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Describe the smallest useful change and how a user would interact with it.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+    validations:
+      required: false
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Project fit
+      options:
+        - label: This improves defensive inventory or version triage.
+          required: true
+        - label: This does not require exploit payloads or unbounded probing.
+          required: true
