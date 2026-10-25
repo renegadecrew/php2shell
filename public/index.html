@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0d1117">
+  <title>PHP2Shell Exposure Check</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <!-- Pixel logo treatment based on DevCop95/shodan_reconsx/assets/shodanx.png. -->
+      <img class="ascii-logo" src="/php2shell-banner.svg" alt="PHP2SHELL" width="831" height="177">
+      <p class="lead">Subdomain discovery · PHP version triage</p>
+      <form id="lookup-form" class="search" autocomplete="off">
+        <label for="domain">Domain or public suffix</label>
+        <div class="search-row">
+          <div class="input-wrap"><span class="input-icon">⌕</span><input id="domain" name="domain" type="text" placeholder="example.com" maxlength="253" required></div>
+          <button type="submit" id="submit"><span>Scan</span><span aria-hidden="true">↗</span></button>
+        </div>
+        <p class="hint probe-hint">GET probes · max 90 hosts · no redirects</p>
+      </form>
+    </section>
+
+    <section id="notice" class="notice" aria-live="polite" hidden></section>
+    <section id="scan-progress" class="scan-progress" aria-live="polite" hidden>
+      <div class="progress-copy"><span id="progress-label">Starting scan…</span><span id="progress-count"></span></div>
+      <progress id="progress-bar" max="90" value="0" aria-label="Scan progress"></progress>
+    </section>
+    <section id="results" hidden>
+      <div class="result-head">
+        <div><p id="result-eyebrow" class="eyebrow">AFFECTED CANDIDATES</p><h2 id="result-domain"></h2></div>
+        <span id="result-count" class="count"></span>
+      </div>
+      <div class="disclaimer"><span>ⓘ</span><p id="result-summary"></p></div>
+      <div id="stats" class="stats"></div>
+      <div class="report-actions">
+        <button id="download-json" type="button">JSON</button>
+        <button id="download-csv" type="button">CSV</button>
+      </div>
+      <div id="source-errors" class="source-errors" hidden></div>
+      <div class="table-wrap">
+        <table><thead><tr><th>HOSTNAME</th><th>SOURCE</th><th>FIRST SEEN</th><th>HTTP</th><th>PHP / ASSESSMENT</th></tr></thead><tbody id="rows"></tbody></table>
+        <div id="empty" class="empty" hidden></div>
+      </div>
+      <details id="checks-panel" class="checks-panel" hidden>
+        <summary id="checks-summary">Probe evidence</summary>
+        <p class="checks-help">HTTP responses and PHP version evidence for each checked host.</p>
+        <div class="table-wrap checks-table-wrap">
+          <table><thead><tr><th>HOSTNAME</th><th>HTTP</th><th>PHP</th><th>ASSESSMENT</th></tr></thead><tbody id="checks-rows"></tbody></table>
+        </div>
+      </details>
+      <div class="cve-section">
+        <div class="cve-title"><div><p class="eyebrow">REFERENCES</p><h3>PHP2Shell</h3></div><span class="severity">CVE</span></div>
+      <p class="cve-copy">Candidates use disclosed runtime versions. Hidden or spoofed banners and vendor backports require verification on the host.</p>
+        <div id="cves" class="cve-list"></div>
+      </div>
+      <footer id="queried-at" class="queried-at"></footer>
+    </section>
+
+  <footer class="page-foot"><span>Bounded sampling · disclosed version evidence</span><span>crt.name + Shodan CTL</span></footer>
+  </main>
+</body>
+</html>
