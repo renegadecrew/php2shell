@@ -1,7 +1,7 @@
 # PHP2Shell Exposure Check
 
-[![CI](https://github.com/DevCop95/php2shell/actions/workflows/ci.yml/badge.svg)](https://github.com/DevCop95/php2shell/actions/workflows/ci.yml)
-[![MIT License](https://img.shields.io/github/license/DevCop95/php2shell)](LICENSE)
+[![CI](https://github.com/renegadecrew/php2shell/actions/workflows/ci.yml/badge.svg)](https://github.com/renegadecrew/php2shell/actions/workflows/ci.yml)
+[![MIT License](https://img.shields.io/github/license/renegadecrew/php2shell)](LICENSE)
 ![Node.js 20+](https://img.shields.io/badge/Node.js-20%2B-339933)
 
 Open-source blue-team PHP2Shell exposure triage. Discover hostnames from certificate-transparency data and check HTTP responses for disclosed PHP versions below fixed releases.
