@@ -4,9 +4,9 @@
 [![MIT License](https://img.shields.io/github/license/renegadecrew/php2shell)](LICENSE)
 ![Node.js 20+](https://img.shields.io/badge/Node.js-20%2B-339933)
 
-Open-source blue-team PHP2Shell exposure triage. Discover hostnames from certificate-transparency data and check HTTP responses for disclosed PHP versions below fixed releases.
+Open-source blue-team PHP2Shell exposure triage. Discover hostnames from certificate-transparency data and assess HTTP evidence for vulnerable PHP runtimes.
 
-It reports **affected candidates** when a disclosed PHP version is below the fixed release for its branch or belongs to a legacy branch. A banner alone cannot confirm exploitability; vendor backports and hidden or spoofed versions require host-side verification.
+It reports **affected candidates** when disclosed version evidence is below a fixed release. For the exact registrable domain, it also checks exposed `phpinfo()` output for the PHP2Shell fix marker. A complete Core table without that marker plus an affected version is strong exposure evidence; a version alone remains a candidate because vendor backports can change the result. Hidden versions and server-side configuration can still make remote results inconclusive. The fix-marker method follows the non-invasive approach documented by [PHP2Shell-Check](https://github.com/covertswarmlabs/PHP2Shell-Check).
 
 ## Demo
 
@@ -34,8 +34,9 @@ Open <http://127.0.0.1:3000>. Set `PORT` to change the port. The server binds to
 - Registrable domains are discovered through **Shodan CTL** and **crt.name**. Public suffixes use **Shodan CTL** and **crt.sh**. A working source can still return results when another source fails; source errors are included in the response.
 - Shodan CTL hostnames are selected first for live checks. For registrable domains, the queried domain is also included in the first batch; remaining slots use CTL hosts before fallback sources.
 - Live checks run by default. Each scan selects up to 30 unique hosts per batch, for at most three batches (90 hosts total), and stops after the first batch with affected candidates.
-- Checks use `GET` requests over HTTPS, falling back to HTTP if the HTTPS root request fails. The scanner checks `/` and, if no PHP version is disclosed, a random `.php` path, `/phpinfo.php`, and `/info.php` until a version is found.
-- Requests do not follow redirects, have a 4-second timeout, and read at most 8 KB per response. DNS results that include non-public addresses are skipped.
+- Checks use `GET` requests over HTTPS, falling back to HTTP if the HTTPS root request fails. The exact registrable domain also checks `/phpinfo.php` and `/info.php` for the fix marker; other hosts use version fingerprinting and PHP presence signals.
+- Requests do not follow redirects and have a 4-second timeout. Responses are capped at 8 KB, except the two exact-domain `phpinfo()` checks, capped at 256 KB. DNS results that include non-public addresses are skipped.
+- The exact-domain result separates a detected patch marker, a version-based affected candidate, and an inconclusive result. The scanner does not send exploit or behavioral probes; a hidden runtime requires host-side verification.
 - The main table contains only affected candidates. Per-host probe evidence includes response status, protocol, checked paths, PHP signals, version source, and assessment. JSON and CSV exports are available.
 - CT source responses are cached in process memory for 30 minutes (up to 64 entries). Live HTTP checks are performed on every scan.
 

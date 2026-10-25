@@ -217,7 +217,7 @@ function requestHostPinned(protocol, hostname, ip, family, requestPath = '/', ma
           body = Buffer.concat([body, chunk.subarray(0, maxBodyBytes - body.length)]);
         }
         if (body.length >= maxBodyBytes) {
-          finish(base);
+          finish({ ...base, truncated: true });
           // Stop even if the server keeps streaming after the local byte cap.
           response.destroy();
         }
@@ -265,7 +265,15 @@ function classifyPhp(headers, body = '') {
   return { version, versionSource, affectedCandidate: false, assessment: 'Verify vendor package status' };
 }
 
-async function probeHost(hostname) {
+function inspectPhpInfoFix(body, truncated = false) {
+  const looksLikePhpInfo = /phpinfo\s*\(\)|PHP Version|module_Core/i.test(body);
+  if (!looksLikePhpInfo) return null;
+  if (/memory_hard_limit_percent/i.test(body)) return 'present';
+  const hasCoreTable = /module_Core|>\s*Core\s*</i.test(body);
+  return hasCoreTable && !truncated ? 'absent' : null;
+}
+
+async function probeHost(hostname, { deep = false } = {}) {
   try {
     const addresses = await dnsLookup(hostname, { all: true, verbatim: true });
     if (!addresses.length || addresses.some(({ address }) => !isPublicAddress(address))) {
@@ -289,24 +297,24 @@ async function probeHost(hostname) {
       protocol: result.protocol,
       phpPresent: present,
       phpVersion: detected.version || null,
-      versionSource: detected.versionSource || null
+      versionSource: detected.versionSource || null,
+      php2ShellFix: inspectPhpInfoFix(result.body || '', result.truncated)
     });
     const rootEvidence = makeEvidence('/', response, php, phpPresence);
     evidence.push(rootEvidence);
     let phpEvidence = phpPresence ? rootEvidence : null;
     let versionEvidence = php.version ? rootEvidence : null;
 
-    // A static homepage can hide PHP while a .php route is handled by PHP-FPM.
-    // Use one random, non-existent path only when the root response gave no version.
-    const phpProbePaths = [
-      `/${randomBytes(8).toString('hex')}.php`,
-      '/phpinfo.php',
-      '/info.php'
-    ];
+    // A static homepage can hide PHP behind PHP-FPM. The exact domain also gets
+    // two bounded phpinfo checks for the PHP2Shell fix marker.
+    const phpProbePaths = deep
+      ? ['/phpinfo.php', '/info.php', `/${randomBytes(8).toString('hex')}.php`]
+      : [`/${randomBytes(8).toString('hex')}.php`, '/phpinfo.php', '/info.php'];
     for (const probePath of phpProbePaths) {
-      if (php.version) break;
+      if (!deep && php.version) break;
       try {
-        const probe = await requestHostPinned(protocol, hostname, addresses[0].address, addresses[0].family, probePath);
+        const isPhpInfoPath = probePath === '/phpinfo.php' || probePath === '/info.php';
+        const probe = await requestHostPinned(protocol, hostname, addresses[0].address, addresses[0].family, probePath, isPhpInfoPath ? 262144 : 8192);
         const probePhp = classifyPhp(probe.headers, probe.body);
         const probePresent = Boolean(probePhp.version || /PHPSESSID/i.test(probe.headers['set-cookie'] || '') || /\bPHP\s+(?:Fatal error|Warning|Notice|Deprecated):/i.test(probe.body));
         const probeEvidence = makeEvidence(probePath, probe, probePhp, probePresent);
@@ -315,8 +323,19 @@ async function probeHost(hostname) {
           php = probePhp;
           versionEvidence = probeEvidence;
         }
+        if (probeEvidence.php2ShellFix) {
+          php.php2ShellFix = probeEvidence.php2ShellFix;
+          php.php2ShellFixPath = probePath;
+          if (probeEvidence.php2ShellFix === 'present') {
+            php.affectedCandidate = false;
+            php.assessment = 'PHP2Shell fix marker found in phpinfo';
+          } else if (php.affectedCandidate === true) {
+            php.assessment = 'Affected version; fix marker absent in complete phpinfo';
+          }
+        }
         if (probePresent && !phpEvidence) phpEvidence = probeEvidence;
         phpPresence ||= probePresent;
+        if (deep && probeEvidence.php2ShellFix) break;
       } catch {
         // Keep the root HTTP result even if a secondary fingerprint request fails.
       }
@@ -329,6 +348,8 @@ async function probeHost(hostname) {
       phpPresent: phpPresence,
       affectedCandidate: php.affectedCandidate,
       assessment: php.assessment,
+      php2ShellFix: php.php2ShellFix || null,
+      php2ShellFixPath: php.php2ShellFixPath || null,
       endpoint: versionEvidence?.path || phpEvidence?.path || '/',
       versionEvidence: versionEvidence ? {
         path: versionEvidence.path,
@@ -343,7 +364,7 @@ async function probeHost(hostname) {
   }
 }
 
-async function probeHosts(selected, onHostComplete = () => {}, probe = probeHost) {
+async function probeHosts(selected, onHostComplete = () => {}, probe = probeHost, targetHostname = null) {
   const results = new Map();
   let cursor = 0;
   let completed = 0;
@@ -351,7 +372,7 @@ async function probeHosts(selected, onHostComplete = () => {}, probe = probeHost
     while (cursor < selected.length) {
       const item = selected[cursor++];
       const hostname = typeof item === 'string' ? item : item.hostname;
-      results.set(hostname, await probe(hostname));
+      results.set(hostname, await probe(hostname, { deep: hostname === targetHostname }));
       completed += 1;
       onHostComplete(completed, selected.length);
     }
@@ -466,7 +487,7 @@ async function lookup(scope, activeCheck = true, onProgress = () => {}, dependen
           batchCompleted: completedInBatch,
           batchTotal
         });
-      }, probe);
+      }, probe, scopeType === 'registrable' ? apex : null);
       checkedHosts += result.checked;
       for (const [hostname, check] of result.results) probeResults.set(hostname, check);
 
@@ -497,6 +518,74 @@ async function lookup(scope, activeCheck = true, onProgress = () => {}, dependen
     http403Count: allFindings.filter((finding) => finding.check?.status === 403).length,
     otherHttpCount: allFindings.filter((finding) => Number.isInteger(finding.check?.status) && finding.check.status !== 200 && finding.check.status !== 403).length
   };
+  const targetCheck = scopeType === 'registrable' ? probeResults.get(apex) : null;
+  const targetAssessment = scopeType !== 'registrable' ? null : !shouldProbe
+    ? { hostname: apex, verdict: 'not_checked', label: 'Not checked', message: 'Active HTTP checks are disabled.' }
+    : !targetCheck || !Number.isInteger(targetCheck.status)
+      ? {
+        hostname: apex,
+        verdict: 'unreachable',
+        label: 'No HTTP response',
+        httpStatus: targetCheck?.status ?? null,
+        phpVersion: targetCheck?.phpVersion ?? null,
+        message: targetCheck?.error || 'The exact domain could not be reached.'
+      }
+      : targetCheck.php2ShellFix === 'present'
+        ? {
+          hostname: apex,
+          verdict: 'confirmed_patched',
+          label: 'PHP2Shell patch detected',
+          httpStatus: targetCheck.status,
+          phpVersion: targetCheck.phpVersion,
+          versionSource: targetCheck.phpVersionSource,
+          assessment: targetCheck.assessment,
+          endpoint: targetCheck.php2ShellFixPath,
+          evidence: 'memory_hard_limit_percent is present in exposed phpinfo output'
+        }
+        : targetCheck.php2ShellFix === 'absent' && targetCheck.affectedCandidate === true
+          ? {
+            hostname: apex,
+            verdict: 'confirmed_vulnerable',
+            label: 'Unpatched PHP2Shell marker detected',
+            httpStatus: targetCheck.status,
+            phpVersion: targetCheck.phpVersion,
+            versionSource: targetCheck.phpVersionSource,
+            assessment: targetCheck.assessment,
+            endpoint: targetCheck.php2ShellFixPath,
+            evidence: 'A complete exposed PHP Core table lacks memory_hard_limit_percent'
+          }
+          : targetCheck.affectedCandidate === true && targetCheck.phpVersion
+        ? {
+          hostname: apex,
+          verdict: 'potentially_affected',
+          label: 'Potentially affected',
+          httpStatus: targetCheck.status,
+          phpVersion: targetCheck.phpVersion,
+          versionSource: targetCheck.phpVersionSource,
+          assessment: targetCheck.assessment,
+          endpoint: targetCheck.endpoint
+        }
+        : targetCheck.assessment === 'At/above fixed release'
+          ? {
+            hostname: apex,
+            verdict: 'fixed_release',
+            label: 'At/above fixed release',
+            httpStatus: targetCheck.status,
+            phpVersion: targetCheck.phpVersion,
+            versionSource: targetCheck.phpVersionSource,
+            assessment: targetCheck.assessment,
+            endpoint: targetCheck.endpoint
+          }
+          : {
+            hostname: apex,
+            verdict: 'unknown',
+            label: targetCheck.phpVersion ? 'Version needs verification' : 'PHP version not disclosed',
+            httpStatus: targetCheck.status,
+            phpVersion: targetCheck.phpVersion,
+            versionSource: targetCheck.phpVersionSource,
+            assessment: targetCheck.assessment,
+            endpoint: targetCheck.endpoint
+          };
   onProgress({ phase: 'complete', checked: checkedHosts, batches: batchCount, candidates: candidates.length, total: Math.min(discovered.length, sampleBatchSize * maxSampleBatches) });
 
   return {
@@ -513,6 +602,7 @@ async function lookup(scope, activeCheck = true, onProgress = () => {}, dependen
     sampleLimit: sampleBatchSize,
     maxSampleBatches,
     stats,
+    targetAssessment,
     sources: scopeType === 'publicSuffix'
       ? { shodanCtl: 'https://ctl.shodan.io/', crtSh: 'https://crt.sh/' }
       : { crtName: 'https://crt.name/', shodanCtl: 'https://ctl.shodan.io/' },

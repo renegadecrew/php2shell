@@ -59,7 +59,7 @@ function csvCell(value) {
 
 function exportCsv(data) {
   const entries = data.checks?.length ? data.checks : data.findings;
-  const header = ['hostname', 'http_status', 'protocol', 'php_detected', 'php_version', 'version_source', 'assessment', 'http_evidence', 'version_evidence', 'sources', 'first_seen'];
+  const header = ['hostname', 'http_status', 'protocol', 'php_detected', 'php_version', 'version_source', 'assessment', 'php2shell_fix_marker', 'http_evidence', 'version_evidence', 'sources', 'first_seen'];
   const lines = [header.map(csvCell).join(',')];
   for (const item of entries) {
     const check = item.check || {};
@@ -71,6 +71,7 @@ function exportCsv(data) {
       check.phpVersion,
       check.phpVersionSource,
       check.assessment,
+      check.php2ShellFix,
       (check.evidence || []).map((entry) => `${String(entry.protocol || '').toUpperCase()} ${entry.status ?? 'No response'} GET ${entry.path}`).join('; '),
       check.versionEvidence ? `${String(check.versionEvidence.protocol || '').toUpperCase()} ${check.versionEvidence.status ?? 'No response'} GET ${check.versionEvidence.path} · ${check.versionEvidence.source || ''}` : '',
       (item.sources || []).join('; '),
@@ -101,6 +102,33 @@ function render(data) {
     ? `SAMPLE ${data.findings.length}/${data.stats.discoveredHostnames}`
     : `${data.findings.length} CANDIDATE${data.findings.length === 1 ? '' : 'S'}`;
   document.querySelector('#result-summary').textContent = data.summary;
+  const targetPanel = document.querySelector('#target-assessment');
+  const target = data.targetAssessment;
+  targetPanel.hidden = !target;
+  if (target) {
+    document.querySelector('#target-host').textContent = target.hostname;
+    const verdict = document.querySelector('#target-verdict');
+    verdict.textContent = target.label;
+    verdict.dataset.state = target.verdict;
+    document.querySelector('#target-http').textContent = Number.isInteger(target.httpStatus) ? String(target.httpStatus) : '—';
+    document.querySelector('#target-php').textContent = target.phpVersion || 'Not disclosed';
+    const targetDetails = [];
+    if (target.versionSource) targetDetails.push(target.versionSource);
+    if (target.evidence) targetDetails.push(target.evidence);
+    if (target.endpoint) targetDetails.push(`GET ${target.endpoint}`);
+    document.querySelector('#target-source').textContent = targetDetails.join(' · ');
+    document.querySelector('#target-note').textContent = target.verdict === 'confirmed_vulnerable'
+      ? 'A full exposed phpinfo Core table lacks the PHP2Shell fix marker and the reported version is affected. Remove public phpinfo and patch the runtime.'
+      : target.verdict === 'confirmed_patched'
+        ? 'The PHP2Shell fix marker is present in exposed phpinfo output, including possible vendor backports. Verify the runtime serving the application.'
+        : target.verdict === 'potentially_affected'
+      ? 'The disclosed version is below the fixed release. Verify the installed package and vendor backports.'
+      : target.verdict === 'fixed_release'
+        ? 'The disclosed version is at or above the fixed release; confirm the installed package on the host.'
+        : target.verdict === 'unknown'
+          ? 'The response does not provide enough version evidence to determine exposure.'
+          : target.message || 'No direct version assessment is available.';
+  }
   const stats = data.stats || {};
   document.querySelector('#stats').textContent = suffixSearch && !activeScan
     ? `Found: ${stats.discoveredHostnames ?? 0} · Sample: ${stats.sampledHostnames ?? 0} · HTTP probes: 0`
