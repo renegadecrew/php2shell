@@ -17,8 +17,9 @@
 
 ## Verification
 
-- [ ] `npm test` passes locally.
-- [ ] CI passes on Node.js 20, 22, and 24.
+- [ ] `npm run check` and `npm test` pass locally.
+- [ ] CI passes on Node.js 20, 22, and 24 (plus cross-platform checks).
+- [ ] CLI launchers (`./scan.sh --help` or `.\scan.ps1 --help`) remain functional if CLI files changed.
 - [ ] Documentation is updated where needed.
 - [ ] Examples and fixtures use reserved domains and contain no real scan data.
 

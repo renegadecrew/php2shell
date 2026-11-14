@@ -28,23 +28,72 @@ npm start
 
 Open <http://127.0.0.1:3000>. Set `PORT` to change the port. The server binds to `127.0.0.1` by default.
 
+## CLI
+
+Run directly via the portable launchers (matching `shodan_reconsx` conventions) or `npm run cli`:
+
+Linux / macOS / Termux:
+
+```sh
+chmod +x scan.sh
+./scan.sh example.com
+```
+
+Windows PowerShell:
+
+```powershell
+.\scan.ps1 example.com
+```
+
+Options:
+
+```sh
+./scan.sh --input domains.txt --format json --output results.json
+./scan.sh example.com --passive --format txt
+./scan.sh example.com --all-batches --max-batches 5 --no-color
+```
+
+- The ASCII `PHP2SHELL` banner and progress status are written to `stderr` (in bright red when `stderr` is an interactive TTY), keeping `stdout` clean for pipes and redirection.
+- `--no-color` and the standard `NO_COLOR` environment variable disable ANSI colors (`NO_COLOR` overrides `--color`). `--help` and `--version` omit the banner.
+- `--input <file>` reads one domain or public suffix per line, ignoring blank lines and `#` comments and deduplicating entries.
+- Set `PHP2SHELL_NODE` to choose a specific `node` binary in `scan.sh` or `scan.ps1`.
+
 ## Discovery and live checks
 
-- Accepts registrable domains such as `example.com` and `site.com.mx`, and public suffixes such as `gob.mx` and `.mx`.
+- Accepts registrable domains with recognized ICANN TLDs such as `example.com` and `site.com.mx`, and public suffixes such as `gob.mx` and `.mx`.
 - Registrable domains are discovered through **Shodan CTL** and **crt.name**. Public suffixes use **Shodan CTL** and **crt.sh**. A working source can still return results when another source fails; source errors are included in the response.
 - Shodan CTL hostnames are selected first for live checks. For registrable domains, the queried domain is also included in the first batch; remaining slots use CTL hosts before fallback sources.
-- Live checks run by default. Each scan selects up to 30 unique hosts per batch, for at most three batches (90 hosts total), and stops after the first batch with affected candidates.
-- Checks use `GET` requests over HTTPS, falling back to HTTP if the HTTPS root request fails. The exact registrable domain also checks `/phpinfo.php` and `/info.php` for the fix marker; other hosts use version fingerprinting and PHP presence signals.
-- Requests do not follow redirects and have a 4-second timeout. Responses are capped at 8 KB, except the two exact-domain `phpinfo()` checks, capped at 256 KB. DNS results that include non-public addresses are skipped.
+- Live checks run by default. Each scan selects up to 30 unique hosts per batch (grouped in 90-host rounds), continuing across remaining discovered hosts until a batch yields at least one affected candidate or all hosts are checked (or cancelled). You can disable "Stop on first candidate batch" in the UI (or pass `--all-batches` in the CLI) to scan beyond the first match.
+- Checks use `GET` requests over HTTPS, falling back to HTTP if the HTTPS root request fails (and recording the TLS failure reason in probe evidence). The exact registrable domain also checks `/phpinfo.php` and `/info.php` for the fix marker; other hosts use version fingerprinting and PHP presence signals.
+- Requests do not follow redirects (while recording `Location` headers on 3xx responses) and have a 4-second timeout. Responses are capped at 8 KB, except the two exact-domain `phpinfo()` checks, capped at 256 KB. DNS results that include non-public addresses are skipped.
 - The exact-domain result separates a detected patch marker, a version-based affected candidate, and an inconclusive result. The scanner does not send exploit or behavioral probes; a hidden runtime requires host-side verification.
-- The main table contains only affected candidates. Per-host probe evidence includes response status, protocol, checked paths, PHP signals, version source, and assessment. JSON and CSV exports are available.
+- The main table contains only affected candidates. Per-host probe evidence includes response status, protocol, checked paths, redirect targets, TLS fallback errors, PHP signals, version source, and assessment, with search and status filters plus JSON and CSV exports.
 - CT source responses are cached in process memory for 30 minutes (up to 64 entries). Live HTTP checks are performed on every scan.
 
 The server binds to `127.0.0.1` by default. API requests must use a loopback `Host` and, when present, a matching same-origin `Origin`; this helps prevent other websites from triggering scans through a local browser. The existing rate limit and public-address checks also apply. No token or domain allowlist is required, and the API does not verify domain ownership. Only scan systems you are authorized to assess. Do not expose the service beyond localhost without adding a suitable network access control.
 
 ## API
 
-### `POST /api/lookup`
+### Async streaming scans (`POST /api/scans`)
+
+Starts a background scan and returns `202` with `{ "scanId": "<uuid>" }`.
+
+Request body:
+
+```json
+{
+  "domain": "example.com",
+  "activeCheck": true,
+  "stopOnCandidate": true,
+  "maxBatches": 3
+}
+```
+
+- `GET /api/scans/<scanId>/events`: Server-Sent Events (`progress`, `batch`, `complete`, `cancelled`, `scan-error`) delivering incremental results after every 30-host batch.
+- `POST /api/scans/<scanId>/cancel`: Aborts an active scan while retaining partial results from already-checked hosts.
+- `GET /api/scans/<scanId>`: Returns the current scan snapshot (`status`, `progress`, `report`, `error`).
+
+### Synchronous lookup (`POST /api/lookup`)
 
 Request body:
 

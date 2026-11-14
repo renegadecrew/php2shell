@@ -1,0 +1,80 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to publish (e.g. v0.5.0)'
+        required: true
+        type: string
+
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    name: Build and publish ${{ inputs.tag || github.ref_name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out release ref
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Verify tag matches package.json version
+        env:
+          TAG_NAME: ${{ inputs.tag || github.ref_name }}
+        run: |
+          PKG_VERSION="$(node -p "require('./package.json').version")"
+          if [ "$TAG_NAME" != "v$PKG_VERSION" ]; then
+            echo "Tag ($TAG_NAME) does not match package.json version (v$PKG_VERSION)" >&2
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Syntax and metadata checks
+        run: npm run check
+
+      - name: Run test suite
+        run: npm test
+
+      - name: Verify CLI launcher
+        run: |
+          bash -n scan.sh
+          ./scan.sh --version
+
+      - name: Build release archive and checksums
+        run: |
+          TARBALL="$(npm pack --silent | tail -n 1)"
+          sha256sum "$TARBALL" > SHA256SUMS.txt
+          echo "TARBALL=$TARBALL" >> "$GITHUB_ENV"
+
+      - name: Create or update GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ inputs.tag || github.ref_name }}
+        run: |
+          if gh release view "$TAG_NAME" >/dev/null 2>&1; then
+            gh release upload "$TAG_NAME" "$TARBALL" SHA256SUMS.txt --clobber
+          else
+            gh release create "$TAG_NAME" "$TARBALL" SHA256SUMS.txt \
+              --title "PHP2Shell Exposure Check $TAG_NAME" \
+              --generate-notes
+          fi

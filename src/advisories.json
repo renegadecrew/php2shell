@@ -1,0 +1,22 @@
+{
+  "advisory": "https://www.php.net/archive/2026.php#2026-10-21-5",
+  "publishedAt": "2026-10-21",
+  "fixedReleases": {
+    "8.2": "8.2.35",
+    "8.3": "8.3.36",
+    "8.4": "8.4.27",
+    "8.5": "8.5.12"
+  },
+  "cves": [
+    {
+      "id": "CVE-2026-109618",
+      "label": "RCE via out-of-memory corruption",
+      "url": "https://www.cve.org/CVERecord?id=CVE-2026-109618"
+    },
+    {
+      "id": "CVE-2026-109619",
+      "label": "RCE via stale global state",
+      "url": "https://www.cve.org/CVERecord?id=CVE-2026-109619"
+    }
+  ]
+}

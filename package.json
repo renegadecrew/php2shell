@@ -1,13 +1,30 @@
 {
   "name": "php2shell-blue-team-audit",
-  "version": "1.0.0",
+  "version": "0.5.0",
   "private": true,
-  "description": "Inventario blue team de hostnames, estado HTTP y versiones PHP divulgadas",
+  "description": "Blue-team inventory of CT-discovered hostnames, HTTP status, and disclosed PHP versions",
   "type": "module",
+  "bin": {
+    "php2shell": "./src/cli.js"
+  },
+  "files": [
+    "src/",
+    "public/",
+    "scan.sh",
+    "scan.ps1",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "SECURITY.md",
+    "THIRD_PARTY_NOTICES.md"
+  ],
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
-    "test": "node --test"
+    "cli": "node src/cli.js",
+    "check": "node -e \"import('node:fs').then(async fs => { const { execFileSync } = await import('node:child_process'); for (const dir of ['src', 'public', 'test']) { for (const f of fs.readdirSync(dir)) { if (f.endsWith('.js')) execFileSync(process.execPath, ['--check', dir + '/' + f], { stdio: 'inherit' }); } } const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8')); const lock = JSON.parse(fs.readFileSync('package-lock.json', 'utf8')); JSON.parse(fs.readFileSync('src/advisories.json', 'utf8')); if (pkg.version !== lock.version || pkg.version !== lock.packages[''].version) throw new Error('package.json and package-lock.json versions differ'); })\"",
+    "test": "node --test",
+    "test:coverage": "node --test --experimental-test-coverage"
   },
   "engines": {
     "node": ">=20"

@@ -11,8 +11,16 @@
 <body>
   <main class="shell">
     <section class="hero">
-      <!-- Pixel logo treatment based on DevCop95/shodan_reconsx/assets/shodanx.png. -->
-      <img class="ascii-logo" src="/php2shell-banner.svg" alt="PHP2SHELL" width="831" height="177">
+      <!-- Unicode block ASCII banner modeled after DevCop95/shodan_reconsx (CLI + Web parity). -->
+      <pre class="ascii-banner" role="img" aria-label="PHP2SHELL"> ██▀███   ██░ ██  ██▀███    ██████    ██████  ██░ ██ ▓█████  ██▓     ██▓    
+▓██ ▒ ██▒▓██░ ██▒▓██ ▒ ██▒ ▒██▒  ██▒ ▒██    ▒ ▓██░ ██▒▓█   ▀ ▓██▒    ▓██▒    
+▓██ ░▄█ ▒▒██▀▀██░▓██ ░▄█ ▒  ░▒  ██▒  ░ ▓██▄   ▒██▀▀██░▒███   ▒██░    ▒██░    
+▒██▀▀█▄  ░▓█ ░██ ▒██▀▀█▄      ▄██▀     ▒   ██▒░▓█ ░██ ▒▓█  ▄ ▒██░    ▒██░    
+░██▓ ▒██▒░▓█▒░██▓░██▓ ▒██▒  ▄██▀     ▒██████▒▒░▓█▒░██▓░▒████▒░██████▒░██████▒
+░ ▒▓ ░▒▓░ ▒ ░░▒░▒░ ▒▓ ░▒▓░ ██▓▒▄▄▄   ▒ ▒▓▒ ▒ ░ ▒ ░░▒░▒░░ ▒░ ░░ ▒░▓  ░░ ▒░▓  ░
+  ░▒ ░ ▒░ ▒ ░▒░ ░  ░▒ ░ ▒░ ▒██████▒  ░ ░▒  ░ ░ ▒ ░▒░ ░ ░ ░  ░░ ░ ▒  ░░ ░ ▒  ░
+  ░░   ░  ░  ░░ ░  ░░   ░  ░ ▒░  ░   ░  ░  ░   ░  ░░ ░   ░     ░ ░     ░ ░   
+   ░      ░  ░  ░   ░        ░             ░   ░  ░  ░   ░  ░    ░  ░    ░  ░</pre>
       <p class="lead">Subdomain discovery · PHP version triage</p>
       <form id="lookup-form" class="search" autocomplete="off">
         <label for="domain">Domain or public suffix</label>
@@ -20,13 +28,28 @@
           <div class="input-wrap"><span class="input-icon">⌕</span><input id="domain" name="domain" type="text" placeholder="example.com" maxlength="253" required></div>
           <button type="submit" id="submit"><span>Scan</span><span aria-hidden="true">↗</span></button>
         </div>
-        <p class="hint probe-hint">GET probes · max 90 hosts · no redirects</p>
+        <div class="scan-options">
+          <label class="scan-option" for="active-check">
+            <input id="active-check" name="activeCheck" type="checkbox" checked>
+            <span>Active HTTP probes (GET only · random 30-host batches · no redirects)</span>
+          </label>
+          <label class="scan-option" for="stop-on-candidate">
+            <input id="stop-on-candidate" name="stopOnCandidate" type="checkbox" checked>
+            <span>Stop on first candidate batch</span>
+          </label>
+        </div>
       </form>
     </section>
 
     <section id="notice" class="notice" aria-live="polite" hidden></section>
     <section id="scan-progress" class="scan-progress" aria-live="polite" hidden>
-      <div class="progress-copy"><span id="progress-label">Starting scan…</span><span id="progress-count"></span></div>
+      <div class="progress-copy">
+        <span id="progress-label">Starting scan…</span>
+        <div class="progress-actions">
+          <span id="progress-count"></span>
+          <button id="cancel-scan" type="button" class="cancel-scan">Cancel</button>
+        </div>
+      </div>
       <progress id="progress-bar" max="90" value="0" aria-label="Scan progress"></progress>
     </section>
     <section id="results" hidden>
@@ -52,6 +75,17 @@
       </div>
       <details id="checks-panel" class="checks-panel" hidden>
         <summary id="checks-summary">Probe evidence</summary>
+        <div class="checks-toolbar">
+          <input id="checks-filter" type="search" placeholder="Filter hostname, status, or assessment…" aria-label="Filter probe evidence">
+          <div class="filter-pills" role="group" aria-label="Evidence filters">
+            <button type="button" class="filter-pill is-active" data-filter="all">All</button>
+            <button type="button" class="filter-pill" data-filter="candidates">Candidates</button>
+            <button type="button" class="filter-pill" data-filter="php">PHP</button>
+            <button type="button" class="filter-pill" data-filter="200">200</button>
+            <button type="button" class="filter-pill" data-filter="403">403</button>
+            <button type="button" class="filter-pill" data-filter="errors">Errors</button>
+          </div>
+        </div>
         <p class="checks-help">HTTP responses and PHP version evidence for each checked host.</p>
         <div class="table-wrap checks-table-wrap">
           <table><thead><tr><th>HOSTNAME</th><th>HTTP</th><th>PHP</th><th>ASSESSMENT</th></tr></thead><tbody id="checks-rows"></tbody></table>
@@ -59,13 +93,13 @@
       </details>
       <div class="cve-section">
         <div class="cve-title"><div><p class="eyebrow">REFERENCES</p><h3>PHP2Shell</h3></div><span class="severity">CVE</span></div>
-      <p class="cve-copy">Candidates use disclosed runtime versions. Hidden or spoofed banners and vendor backports require verification on the host.</p>
+        <p class="cve-copy">Candidates use disclosed runtime versions. Hidden or spoofed banners and vendor backports require verification on the host.</p>
         <div id="cves" class="cve-list"></div>
       </div>
       <footer id="queried-at" class="queried-at"></footer>
     </section>
 
-  <footer class="page-foot"><span>Bounded sampling · disclosed version evidence</span><span>crt.name + Shodan CTL</span></footer>
+    <footer class="page-foot"><span>Bounded sampling · disclosed version evidence</span><span id="footer-sources">Shodan CTL + crt.name / crt.sh</span></footer>
   </main>
 </body>
 </html>

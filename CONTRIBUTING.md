@@ -15,6 +15,7 @@ Requirements: Node.js 20 or later and npm.
 
 ```sh
 npm ci
+npm run check
 npm test
 npm start
 ```

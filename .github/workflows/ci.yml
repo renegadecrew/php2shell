@@ -2,8 +2,16 @@ name: CI
 
 on:
   push:
+    branches: [main]
+    tags:
+      - 'v*'
   pull_request:
+    branches: [main]
   workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -31,5 +39,66 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Syntax and metadata checks
+        run: npm run check
+
       - name: Run test suite
         run: npm test
+
+      - name: Verify CLI and POSIX launcher
+        run: |
+          if grep -q $'\r' scan.sh; then
+            echo "scan.sh must use LF line endings" >&2
+            exit 1
+          fi
+          test -x scan.sh
+          bash -n scan.sh
+          node src/cli.js --version
+          node src/cli.js --help >/dev/null
+          ./scan.sh --version
+          ./scan.sh --help >/dev/null
+
+      - name: Verify package tarball
+        run: npm pack --dry-run >/dev/null
+
+  cross-platform:
+    name: ${{ matrix.os }} (Node.js 24)
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Syntax and metadata checks
+        run: npm run check
+
+      - name: Run test suite
+        run: npm test
+
+      - name: Verify PowerShell launcher
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          .\scan.ps1 --version
+          .\scan.ps1 --help | Out-Null
+
+      - name: Verify shell launcher
+        if: runner.os != 'Windows'
+        run: |
+          bash -n scan.sh
+          ./scan.sh --version
+          ./scan.sh --help >/dev/null
