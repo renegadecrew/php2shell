@@ -30,6 +30,6 @@
     "node": ">=20"
   },
   "dependencies": {
-    "tldts": "^7.4.19"
+    "tldts": "^7.5.2"
   }
 }
