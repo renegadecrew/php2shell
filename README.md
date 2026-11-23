@@ -63,7 +63,7 @@ Options:
 - Accepts registrable domains with recognized ICANN TLDs such as `example.com` and `site.com.mx`, and public suffixes such as `gob.mx` and `.mx`.
 - Registrable domains are discovered through **Shodan CTL** and **crt.name**. Public suffixes use **Shodan CTL** and **crt.sh**. A working source can still return results when another source fails; source errors are included in the response.
 - Shodan CTL hostnames are selected first for live checks. For registrable domains, the queried domain is also included in the first batch; remaining slots use CTL hosts before fallback sources.
-- Live checks run by default. Each scan selects up to 30 unique hosts per batch (grouped in 90-host rounds), continuing across remaining discovered hosts until a batch yields at least one affected candidate or all hosts are checked (or cancelled). You can disable "Stop on first candidate batch" in the UI (or pass `--all-batches` in the CLI) to scan beyond the first match.
+- Live checks run by default. Each scan selects up to 30 unique hosts per batch and checks at most 90 random hosts by default. A host is removed from the pool once selected, so it is never probed twice. The UI can continue beyond 90 hosts with its explicit slower-scan option; the CLI can use `--all-batches` or set another limit with `--max-batches <n>`.
 - Checks use `GET` requests over HTTPS, falling back to HTTP if the HTTPS root request fails (and recording the TLS failure reason in probe evidence). The exact registrable domain also checks `/phpinfo.php` and `/info.php` for the fix marker; other hosts use version fingerprinting and PHP presence signals.
 - Requests do not follow redirects (while recording `Location` headers on 3xx responses) and have a 4-second timeout. Responses are capped at 8 KB, except the two exact-domain `phpinfo()` checks, capped at 256 KB. DNS results that include non-public addresses are skipped.
 - The exact-domain result separates a detected patch marker, a version-based affected candidate, and an inconclusive result. The scanner does not send exploit or behavioral probes; a hidden runtime requires host-side verification.
@@ -105,7 +105,7 @@ Request body:
 }
 ```
 
-`activeCheck` defaults to `true`. Set it to `false` for passive discovery without contacting discovered hosts. When `scanId` is provided, progress is available at `GET /api/progress?id=<scanId>`.
+`activeCheck` defaults to `true`. Active checks use up to three randomized 30-host batches (90 unique hosts total) unless `maxBatches` is set. Use `maxBatches: null` to check every discovered host. Set `activeCheck` to `false` for passive discovery without contacting discovered hosts. When `scanId` is provided, progress is available at `GET /api/progress?id=<scanId>`.
 
 The response includes:
 

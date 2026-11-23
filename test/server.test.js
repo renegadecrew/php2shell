@@ -152,7 +152,7 @@ test('CT source responses are cached and concurrent identical lookups share one 
   assert.equal(requests, 1);
 });
 
-test('active lookup retries random batches without repeats until all hosts are checked when none are candidates', async () => {
+test('active lookup caps default scan at 90 unique hosts when no candidates are found', async () => {
   const probeFn = async () => ({
     status: 200,
     protocol: 'https',
@@ -165,16 +165,16 @@ test('active lookup retries random batches without repeats until all hosts are c
     { domain: 'example.com', scopeType: 'registrable' },
     true,
     () => {},
-    lookupDependencies(94, probeFn)
+    lookupDependencies(130, probeFn)
   );
 
   const checkedHostnames = report.checks.map(({ hostname }) => hostname);
-  assert.equal(report.stats.discoveredHostnames, 95);
-  assert.equal(report.stats.checkedHosts, 95);
-  assert.equal(report.stats.batches, 4);
-  assert.equal(new Set(checkedHostnames).size, 95);
+  assert.equal(report.stats.discoveredHostnames, 131);
+  assert.equal(report.stats.checkedHosts, 90);
+  assert.equal(report.stats.batches, 3);
+  assert.equal(new Set(checkedHostnames).size, 90);
   assert.equal(report.findings.length, 0);
-  assert.equal(report.stats.http200Count, 95);
+  assert.equal(report.stats.http200Count, 90);
   assert.equal(report.stats.noResponseCount, 0);
 });
 
@@ -186,7 +186,7 @@ test('active lookup continues past 90 hosts and stops on the first batch contain
     { domain: 'example.com', scopeType: 'registrable' },
     true,
     () => {},
-    lookupDependencies(130, probeFn)
+    lookupDependencies(130, probeFn, { maxBatches: 4 })
   );
 
   assert.equal(report.stats.discoveredHostnames, 131);

@@ -80,7 +80,8 @@ function writeSseEvent(res, eventName, payload) {
 }
 
 function parseMaxBatches(value) {
-  if (value === undefined || value === null || value === '') return null;
+  if (value === undefined) return MAX_SAMPLE_BATCHES;
+  if (value === null || value === '') return null;
   const parsed = Number(value);
   if (!Number.isInteger(parsed) || parsed < 1 || parsed > 500) {
     const error = new Error('maxBatches must be an integer between 1 and 500.');

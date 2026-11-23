@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Improved
+- Cap live scans at 90 randomly selected unique hosts by default to prevent large hostname inventories from running indefinitely.
+- Add an explicit UI/CLI path to continue through all discovered hosts when needed.
+
 ## [0.5.0] - 2026-11-14
 
 ### Added

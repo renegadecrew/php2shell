@@ -365,7 +365,11 @@ async function lookup(scope, activeCheck = true, onProgress = () => {}, dependen
   const sample = dependencies.randomSample || randomSample;
   const onBatch = dependencies.onBatch || null;
   const stopOnCandidate = dependencies.stopOnCandidate !== false;
-  const maxBatches = Number.isInteger(dependencies.maxBatches) && dependencies.maxBatches > 0 ? dependencies.maxBatches : null;
+  const maxBatches = dependencies.maxBatches === undefined
+    ? MAX_SAMPLE_BATCHES
+    : Number.isInteger(dependencies.maxBatches) && dependencies.maxBatches > 0
+      ? dependencies.maxBatches
+      : null;
   const returnPartialOnAbort = Boolean(dependencies.returnPartialOnAbort);
   const { domain: apex, scopeType } = scope;
 

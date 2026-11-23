@@ -2,6 +2,7 @@ const form = document.querySelector('#lookup-form');
 const input = document.querySelector('#domain');
 const activeCheckInput = document.querySelector('#active-check');
 const stopOnCandidateInput = document.querySelector('#stop-on-candidate');
+const allBatchesInput = document.querySelector('#all-batches');
 const button = document.querySelector('#submit');
 const cancelButton = document.querySelector('#cancel-scan');
 const notice = document.querySelector('#notice');
@@ -100,6 +101,7 @@ document.querySelector('#download-csv').addEventListener('click', () => {
 if (activeCheckInput && stopOnCandidateInput) {
   activeCheckInput.addEventListener('change', () => {
     stopOnCandidateInput.disabled = !activeCheckInput.checked;
+    if (allBatchesInput) allBatchesInput.disabled = !activeCheckInput.checked;
   });
 }
 
@@ -313,7 +315,12 @@ form.addEventListener('submit', async (event) => {
     const startResponse = await fetch('/api/scans', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ domain: input.value, activeCheck, stopOnCandidate })
+      body: JSON.stringify({
+        domain: input.value,
+        activeCheck,
+        stopOnCandidate,
+        maxBatches: allBatchesInput?.checked ? null : 3
+      })
     });
     const startData = await startResponse.json();
     if (!startResponse.ok) {

@@ -41,8 +41,8 @@ function usageText() {
     '  -o, --output <file>      Write formatted report to file instead of stdout',
     '  -f, --format <fmt>       Output format: txt | json | csv (default: txt)',
     '  -p, --passive            Passive CT discovery only (no HTTP probes)',
-    '      --all-batches        Continue across all batches instead of stopping on first candidate',
-    '      --max-batches <n>    Maximum number of 30-host batches per domain',
+    '      --all-batches        Check all discovered hosts (default limit: 90)',
+    '      --max-batches <n>    Maximum number of 30-host batches (default: 3 / 90 hosts)',
     '      --no-color           Disable ANSI color in stderr banner and summary',
     '      --color              Force ANSI color when NO_COLOR is unset',
     '  -v, --version            Show version and exit',
@@ -58,7 +58,7 @@ function parseArgs(argv) {
     format: 'txt',
     passive: false,
     stopOnCandidate: true,
-    maxBatches: null,
+    maxBatches: 3,
     noColor: false,
     forceColor: false,
     help: false,
@@ -70,7 +70,10 @@ function parseArgs(argv) {
     if (arg === '-h' || arg === '--help') options.help = true;
     else if (arg === '-v' || arg === '--version') options.version = true;
     else if (arg === '-p' || arg === '--passive') options.passive = true;
-    else if (arg === '--all-batches') options.stopOnCandidate = false;
+    else if (arg === '--all-batches') {
+      options.stopOnCandidate = false;
+      options.maxBatches = null;
+    }
     else if (arg === '--no-color') options.noColor = true;
     else if (arg === '--color') options.forceColor = true;
     else if (arg === '-i' || arg === '--input') {

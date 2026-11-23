@@ -31,11 +31,15 @@
         <div class="scan-options">
           <label class="scan-option" for="active-check">
             <input id="active-check" name="activeCheck" type="checkbox" checked>
-            <span>Active HTTP probes (GET only · random 30-host batches · no redirects)</span>
+            <span>Active HTTP probes (GET only · randomized · up to 90 hosts · no redirects)</span>
           </label>
           <label class="scan-option" for="stop-on-candidate">
             <input id="stop-on-candidate" name="stopOnCandidate" type="checkbox" checked>
             <span>Stop on first candidate batch</span>
+          </label>
+          <label class="scan-option" for="all-batches">
+            <input id="all-batches" name="allBatches" type="checkbox">
+            <span>Continue beyond 90 hosts (slower)</span>
           </label>
         </div>
       </form>
